@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: drf-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "1112:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
