@@ -1,6 +1,8 @@
 from rest_framework import generics, mixins
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Order
+from .permissions import IsOrderOwner
 from .serializers import OrderSerializer
 
 
@@ -11,6 +13,9 @@ class OrderListCreateView(
 ):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+    permission_classes = [
+        IsAuthenticated,
+    ]
 
     def get(self, request):
         return self.list(request)
@@ -27,6 +32,10 @@ class OrderDetailView(
 ):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+    permission_classes = [
+        IsAuthenticated,
+        IsOrderOwner,
+    ]
 
     def get(self, request, *args, **kwargs):
         return self.retrieve(request, *args, **kwargs)
