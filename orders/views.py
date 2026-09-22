@@ -1,4 +1,6 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, mixins
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Order
@@ -16,6 +18,10 @@ class OrderListCreateView(
     permission_classes = [
         IsAuthenticated,
     ]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["status"]
+    search_fields = ["number"]
+    ordering_fields = ["total"]
 
     def get(self, request):
         return self.list(request)
