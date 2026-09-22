@@ -12,7 +12,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ["id", "name", "price", "description"]
+        fields = ["id", "name", "price", "description", "categories"]
 
     def validate_price(self, value):
         if value < 0:
@@ -29,18 +29,23 @@ class ProductSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        print("CREATE:", validated_data)
+        categories = validated_data.pop("categories", [])
 
         product = Product.objects.create(**validated_data)
+
+        product.categories.set(categories)
 
         return product
 
     def update(self, instance, validated_data):
-        print("UPDATE:", validated_data)
+        categories = validated_data.pop("categories", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
         instance.save()
+
+        if categories is not None:
+            instance.categories.set(categories)
 
         return instance
