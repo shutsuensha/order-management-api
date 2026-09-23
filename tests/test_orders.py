@@ -1,4 +1,5 @@
 import pytest
+from django.core.cache import cache
 from django.db import connection, transaction
 from django.db.models import Count
 from django.test.utils import CaptureQueriesContext
@@ -343,3 +344,12 @@ def test_select_for_update():
     order.refresh_from_db()
 
     assert order.status == "paid"
+
+
+@pytest.mark.django_db
+def test_redis_cache():
+    cache.set("test_key", "hello", timeout=60)
+
+    value = cache.get("test_key")
+
+    assert value == "hello"
