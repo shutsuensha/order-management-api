@@ -13,7 +13,7 @@ class OrderListCreateView(
     mixins.CreateModelMixin,
     generics.GenericAPIView,
 ):
-    queryset = Order.objects.all()
+    queryset = Order.objects.all().order_by("id")
     serializer_class = OrderSerializer
     permission_classes = [
         IsAuthenticated,
@@ -36,7 +36,7 @@ class OrderDetailView(
     mixins.DestroyModelMixin,
     generics.GenericAPIView,
 ):
-    queryset = Order.objects.all()
+    queryset = Order.objects.all().order_by("id")
     serializer_class = OrderSerializer
     permission_classes = [
         IsAuthenticated,

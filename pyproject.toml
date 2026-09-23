@@ -45,3 +45,8 @@ show_error_codes = true
 warn_unused_ignores = true
 ignore_missing_imports = true
 exclude = ["migrations"]
+
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py", "*_tests.py"]
