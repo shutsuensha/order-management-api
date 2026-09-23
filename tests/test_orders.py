@@ -1,7 +1,11 @@
 import pytest
+from django.db import connection, transaction
+from django.db.models import Count
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
 from orders.models import Order
+from products.models import Category, Product
 from users.models import User
 
 
@@ -221,3 +225,121 @@ def test_create_order_validation_error():
 
     assert response.status_code == 400
     assert "number" in response.data["error"]
+
+
+@pytest.mark.django_db
+def test_orders_n_plus_one():
+    user = User.objects.create_user(
+        username="testuser",
+        password="12345678",
+        email="test@example.com",
+        age=25,
+    )
+
+    for i in range(3):
+        Order.objects.create(
+            user=user,
+            number=f"ORDER-{i}",
+            total="100.00",
+            status="pending",
+        )
+
+    orders = Order.objects.select_related("user")
+
+    with CaptureQueriesContext(connection) as queries:
+        for order in orders:
+            order.user.username
+
+    print("QUERIES:", len(queries))
+
+
+@pytest.mark.django_db
+def test_products_prefetch_related():
+    category = Category.objects.create(name="Test")
+
+    for i in range(3):
+        product = Product.objects.create(
+            name=f"Product-{i}",
+            price="100.00",
+        )
+        product.categories.add(category)
+
+    products = Product.objects.prefetch_related("categories")
+
+    with CaptureQueriesContext(connection) as queries:
+        for product in products:
+            list(product.categories.all())
+
+    print("QUERIES:", len(queries))
+
+
+@pytest.mark.django_db
+def test_product_annotate():
+    category1 = Category.objects.create(name="Category 1")
+    category2 = Category.objects.create(name="Category 2")
+
+    product = Product.objects.create(
+        name="Product",
+        price="100.00",
+    )
+
+    product.categories.add(category1, category2)
+
+    product = Product.objects.annotate(categories_count=Count("categories")).get(
+        id=product.id
+    )
+
+    assert product.categories_count == 2
+
+
+@pytest.mark.django_db
+def test_transaction_rollback():
+    user = User.objects.create_user(
+        username="transaction-user",
+        password="12345678",
+        email="transaction@example.com",
+        age=25,
+    )
+
+    try:
+        with transaction.atomic():
+            Order.objects.create(
+                user=user,
+                number="ROLLBACK-001",
+                total="100.00",
+                status="pending",
+            )
+
+            raise Exception("rollback")
+
+    except Exception:
+        pass
+
+    assert not Order.objects.filter(number="ROLLBACK-001").exists()
+
+
+@pytest.mark.django_db
+def test_select_for_update():
+    user = User.objects.create_user(
+        username="lock-user",
+        password="12345678",
+        email="lock@example.com",
+        age=25,
+    )
+
+    order = Order.objects.create(
+        user=user,
+        number="LOCK-001",
+        total="100.00",
+        status="pending",
+    )
+
+    with transaction.atomic():
+        order = Order.objects.select_for_update().get(id=order.id)
+
+        order.status = "paid"
+        order.save()
+
+    order.refresh_from_db()
+
+    assert order.status == "paid"
