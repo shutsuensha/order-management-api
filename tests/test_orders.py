@@ -1,7 +1,7 @@
 import pytest
 from django.core.cache import cache
 from django.db import connection, transaction
-from django.db.models import Count
+from django.db.models import Avg, Count, Exists, OuterRef, Subquery
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
@@ -353,3 +353,114 @@ def test_redis_cache():
     value = cache.get("test_key")
 
     assert value == "hello"
+
+
+@pytest.mark.django_db
+def test_user_orders_count():
+    user = User.objects.create_user(
+        username="testuser",
+        password="12345678",
+        age=25,
+    )
+
+    Order.objects.create(
+        number="ORDER-001",
+        total="100.00",
+        status="pending",
+        user=user,
+    )
+    Order.objects.create(
+        number="ORDER-002",
+        total="200.00",
+        status="paid",
+        user=user,
+    )
+
+    user = User.objects.annotate(orders_count=Count("orders")).get(id=user.id)
+
+    assert user.orders_count == 2
+
+
+@pytest.mark.django_db
+def test_order_average_total():
+    Order.objects.create(
+        number="ORDER-001",
+        total="100.00",
+        status="pending",
+    )
+    Order.objects.create(
+        number="ORDER-002",
+        total="200.00",
+        status="paid",
+    )
+
+    result = Order.objects.aggregate(avg_total=Avg("total"))
+
+    assert result["avg_total"] == 150
+
+
+@pytest.mark.django_db
+def test_user_has_orders():
+    user_with_order = User.objects.create_user(
+        username="with_order",
+        email="with_order@test.com",
+        password="12345678",
+        age=25,
+    )
+
+    user_without_order = User.objects.create_user(
+        username="without_order",
+        email="without_order@test.com",
+        password="12345678",
+        age=25,
+    )
+
+    Order.objects.create(
+        number="ORDER-EXISTS-001",
+        total="100.00",
+        status="paid",
+        user=user_with_order,
+    )
+
+    orders = Order.objects.filter(user=OuterRef("pk"))
+
+    users = User.objects.annotate(has_orders=Exists(orders)).order_by("id")
+
+    user_with_order = users.get(id=user_with_order.id)
+    user_without_order = users.get(id=user_without_order.id)
+
+    assert user_with_order.has_orders is True
+    assert user_without_order.has_orders is False
+
+
+@pytest.mark.django_db
+def test_user_last_order():
+    user = User.objects.create_user(
+        username="subquery_user",
+        email="subquery@test.com",
+        password="12345678",
+        age=25,
+    )
+
+    Order.objects.create(
+        number="ORDER-001",
+        total="100.00",
+        status="paid",
+        user=user,
+    )
+    Order.objects.create(
+        number="ORDER-002",
+        total="200.00",
+        status="pending",
+        user=user,
+    )
+
+    last_order = Order.objects.filter(user=OuterRef("pk")).order_by("-id")
+
+    users = User.objects.annotate(
+        last_order_number=Subquery(last_order.values("number")[:1])
+    )
+
+    user = users.get(id=user.id)
+
+    assert user.last_order_number == "ORDER-002"
