@@ -2,6 +2,8 @@ import pytest
 from django.core.cache import cache
 from django.db import connection, transaction
 from django.db.models import Avg, Count, Exists, OuterRef, Subquery
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
@@ -464,3 +466,55 @@ def test_user_last_order():
     user = users.get(id=user.id)
 
     assert user.last_order_number == "ORDER-002"
+
+
+@pytest.mark.django_db
+def test_post_save_not_called_on_queryset_update():
+    calls = []
+
+    @receiver(post_save, sender=Order)
+    def order_saved(sender, instance, created, **kwargs):
+        calls.append(instance.id)
+
+    order = Order.objects.create(
+        number="SIGNAL-001",
+        total="100.00",
+        status="pending",
+    )
+
+    assert calls == [order.id]
+
+    calls.clear()
+
+    Order.objects.filter(id=order.id).update(status="paid")
+
+    assert calls == []
+
+
+@pytest.mark.django_db
+def test_order_queryset_for_user_pending():
+    user = User.objects.create_user(
+        username="manager_test",
+        email="manager_test@example.com",
+        password="password",
+        age=25,
+    )
+
+    Order.objects.create(
+        number="PENDING-1",
+        total="500.00",
+        status="pending",
+        user=user,
+    )
+
+    Order.objects.create(
+        number="PAID-1",
+        total="1500.00",
+        status="paid",
+        user=user,
+    )
+
+    orders = Order.objects.for_user(user).pending()
+
+    assert orders.count() == 1
+    assert orders.first().number == "PENDING-1"
