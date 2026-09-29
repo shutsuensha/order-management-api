@@ -13,7 +13,7 @@ class OrderListCreateView(
     mixins.CreateModelMixin,
     generics.GenericAPIView,
 ):
-    queryset = Order.objects.all().order_by("id")
+    queryset = Order.objects.select_related("user").order_by("id")
     serializer_class = OrderSerializer
     permission_classes = [
         IsAuthenticated,

@@ -5,7 +5,7 @@ from .serializers import UserSerializer
 
 
 class UserListCreateView(generics.ListCreateAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.select_related("profile")
     serializer_class = UserSerializer
 
 

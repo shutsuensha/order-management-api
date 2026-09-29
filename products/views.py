@@ -11,7 +11,7 @@ class ProductListCreateAPIView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
-        products = Product.objects.all()
+        products = Product.objects.prefetch_related("categories")
         serializer = ProductSerializer(products, many=True)
 
         return Response(serializer.data)
