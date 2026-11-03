@@ -56,6 +56,9 @@ def test_create_order():
     assert response.data["number"] == "TEST-001"
     assert response.data["total"] == "100.00"
 
+    order = Order.objects.get(number="TEST-001")
+    assert order.user == user
+
 
 @pytest.mark.django_db
 def test_orders_list_unauthorized():
@@ -95,6 +98,37 @@ def test_order_detail_forbidden_for_another_user():
     response = client.get(f"/api/orders/{order.id}/")
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_orders_list_contains_only_current_users_orders():
+    user = User.objects.create_user(
+        username="user1",
+        password="12345678",
+        email="user1@example.com",
+        age=25,
+    )
+    another_user = User.objects.create_user(
+        username="user2",
+        password="12345678",
+        email="user2@example.com",
+        age=25,
+    )
+    Order.objects.create(user=user, number="OWN", total="10.00", status="pending")
+    Order.objects.create(
+        user=another_user,
+        number="FOREIGN",
+        total="20.00",
+        status="pending",
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.get("/api/orders/")
+
+    assert response.status_code == 200
+    assert [item["number"] for item in response.data["results"]] == ["OWN"]
 
 
 @pytest.mark.django_db

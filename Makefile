@@ -9,3 +9,6 @@ check:
 
 run:
 	uv run python manage.py runserver
+
+db:
+	docker exec -it drf-postgres psql -U postgres -d drf_db

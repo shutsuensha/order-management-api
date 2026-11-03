@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -37,13 +38,13 @@ class ProductDetailAPIView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request, pk):
-        product = Product.objects.get(pk=pk)
+        product = get_object_or_404(Product, pk=pk)
         serializer = ProductSerializer(product)
 
         return Response(serializer.data)
 
     def put(self, request, pk):
-        product = Product.objects.get(pk=pk)
+        product = get_object_or_404(Product, pk=pk)
         serializer = ProductSerializer(product, data=request.data)
 
         if serializer.is_valid():
@@ -56,7 +57,7 @@ class ProductDetailAPIView(APIView):
         )
 
     def patch(self, request, pk):
-        product = Product.objects.get(pk=pk)
+        product = get_object_or_404(Product, pk=pk)
         serializer = ProductSerializer(
             product,
             data=request.data,
@@ -73,7 +74,7 @@ class ProductDetailAPIView(APIView):
         )
 
     def delete(self, request, pk):
-        product = Product.objects.get(pk=pk)
+        product = get_object_or_404(Product, pk=pk)
         product.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
