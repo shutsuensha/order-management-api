@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -10,7 +11,9 @@ from .serializers import ProductSerializer
 
 class ProductListCreateAPIView(APIView):
     permission_classes = [IsAdminUser]
+    serializer_class = ProductSerializer
 
+    @extend_schema(operation_id="products_list")
     def get(self, request):
         products = Product.objects.prefetch_related("categories")
         serializer = ProductSerializer(products, many=True)
@@ -36,7 +39,9 @@ class ProductListCreateAPIView(APIView):
 
 class ProductDetailAPIView(APIView):
     permission_classes = [IsAdminUser]
+    serializer_class = ProductSerializer
 
+    @extend_schema(operation_id="products_detail")
     def get(self, request, pk):
         product = get_object_or_404(Product, pk=pk)
         serializer = ProductSerializer(product)

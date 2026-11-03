@@ -1,6 +1,9 @@
+import logging
 import time
 
 from django.http import HttpRequest, HttpResponse
+
+logger = logging.getLogger("config.request")
 
 
 class RequestTimeMiddleware:
@@ -14,20 +17,12 @@ class RequestTimeMiddleware:
 
         duration = time.perf_counter() - start
 
-        print(f"{request.method} {request.path} - {duration:.4f}s")
-
-        return response
-
-
-class DebugMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        print("DEBUG: before")
-
-        response = self.get_response(request)
-
-        print("DEBUG: after")
+        logger.info(
+            "%s %s -> %s in %.4fs",
+            request.method,
+            request.path,
+            response.status_code,
+            duration,
+        )
 
         return response
