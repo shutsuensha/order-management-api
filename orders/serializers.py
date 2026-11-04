@@ -81,8 +81,16 @@ class OrderSerializer(serializers.ModelSerializer):
     def _create_items(order: Order, items_data: list[dict]) -> Decimal:
         total = Decimal("0.00")
         for item_data in items_data:
-            product = item_data["product"]
+            product = Product.objects.select_for_update().get(
+                pk=item_data["product"].pk
+            )
             quantity = item_data["quantity"]
+
+            if product.stock < quantity:
+                raise serializers.ValidationError(
+                    {"items": f"Insufficient stock for {product.name}."}
+                )
+
             item_price = product.price
 
             OrderItem.objects.create(
@@ -92,9 +100,18 @@ class OrderSerializer(serializers.ModelSerializer):
                 product_name=product.name,
                 unit_price=item_price,
             )
+            product.stock -= quantity
+            product.save(update_fields=["stock"])
             total += item_price * quantity
 
         return total
+
+    @staticmethod
+    def _restore_items_stock(order: Order) -> None:
+        for item in order.items.all():
+            product = Product.objects.select_for_update().get(pk=item.product_id)
+            product.stock += item.quantity
+            product.save(update_fields=["stock"])
 
     @transaction.atomic
     def create(self, validated_data):
@@ -119,6 +136,7 @@ class OrderSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
 
         if items_data is not None:
+            self._restore_items_stock(instance)
             instance.items.all().delete()
             instance.total = self._create_items(instance, items_data)
 

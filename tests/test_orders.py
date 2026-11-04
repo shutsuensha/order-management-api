@@ -41,8 +41,8 @@ def test_create_order():
     client = APIClient()
     client.force_authenticate(user=user)
 
-    keyboard = Product.objects.create(name="Keyboard", price="30.00")
-    mouse = Product.objects.create(name="Mouse", price="40.00")
+    keyboard = Product.objects.create(name="Keyboard", price="30.00", stock=2)
+    mouse = Product.objects.create(name="Mouse", price="40.00", stock=1)
 
     response = client.post(
         "/api/orders/",
@@ -69,6 +69,10 @@ def test_create_order():
     assert order.user == user
     assert order.items.count() == 2
     assert OrderItem.objects.get(order=order, product=keyboard).quantity == 2
+    keyboard.refresh_from_db()
+    mouse.refresh_from_db()
+    assert keyboard.stock == 0
+    assert mouse.stock == 0
 
 
 @pytest.mark.django_db
@@ -78,6 +82,41 @@ def test_orders_list_unauthorized():
     response = client.get("/api/orders/")
 
     assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_insufficient_stock_atomically():
+    user = User.objects.create_user(
+        username="stock-user",
+        password="12345678",
+        email="stock@example.com",
+        age=25,
+    )
+    product = Product.objects.create(
+        name="Limited product",
+        price="10.00",
+        stock=1,
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(
+        "/api/orders/",
+        {
+            "status": "pending",
+            "items": [{"product_id": product.id, "quantity": 2}],
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert response.data["error"]["items"] == (
+        "Insufficient stock for Limited product."
+    )
+    assert not Order.objects.filter(user=user).exists()
+    product.refresh_from_db()
+    assert product.stock == 1
 
 
 @pytest.mark.django_db
@@ -294,7 +333,7 @@ def test_order_put():
 
     client = APIClient()
     client.force_authenticate(user=user)
-    product = Product.objects.create(name="Updated product", price="125.00")
+    product = Product.objects.create(name="Updated product", price="125.00", stock=2)
 
     response = client.put(
         f"/api/orders/{order.id}/",
