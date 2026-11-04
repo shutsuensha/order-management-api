@@ -184,6 +184,39 @@ def test_order_patch():
         format="json",
     )
 
+    assert response.status_code == 400
+    assert response.data["error"]["status"][0] == (
+        "Only an administrator can set this status."
+    )
+    order.refresh_from_db()
+    assert order.status == "pending"
+
+
+@pytest.mark.django_db
+def test_admin_can_set_paid_status():
+    admin = User.objects.create_user(
+        username="status-admin",
+        password="12345678",
+        email="status-admin@example.com",
+        age=30,
+        is_staff=True,
+    )
+    order = Order.objects.create(
+        user=admin,
+        number="ORDER-ADMIN-STATUS",
+        total="100.00",
+        status="pending",
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=admin)
+
+    response = client.patch(
+        f"/api/orders/{order.id}/",
+        {"status": "paid"},
+        format="json",
+    )
+
     assert response.status_code == 200
     assert response.data["status"] == "paid"
 
@@ -267,7 +300,7 @@ def test_order_put():
         f"/api/orders/{order.id}/",
         {
             "user_id": user.id,
-            "status": "paid",
+            "status": "pending",
             "items": [{"product_id": product.id, "quantity": 2}],
         },
         format="json",
@@ -276,7 +309,7 @@ def test_order_put():
     assert response.status_code == 200
     assert response.data["number"] == "ORDER-PUT"
     assert response.data["total"] == "250.00"
-    assert response.data["status"] == "paid"
+    assert response.data["status"] == "pending"
 
 
 @pytest.mark.django_db

@@ -59,6 +59,22 @@ class OrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"total": "Total is calculated from order items."}
             )
+
+        request = self.context.get("request")
+        requested_status = attrs.get("status")
+        protected_statuses = {
+            Order.Status.PAID,
+            Order.Status.COMPLETED,
+        }
+        if (
+            request
+            and requested_status in protected_statuses
+            and not request.user.is_staff
+        ):
+            raise serializers.ValidationError(
+                {"status": "Only an administrator can set this status."}
+            )
+
         return attrs
 
     @staticmethod
