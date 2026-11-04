@@ -51,7 +51,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "status",
             "items",
         ]
-        read_only_fields = ["total"]
+        read_only_fields = ["number", "total"]
 
     def validate(self, attrs):
         if "total" in self.initial_data:

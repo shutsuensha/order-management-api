@@ -48,7 +48,6 @@ def test_create_order():
         "/api/orders/",
         {
             "user_id": user.id,
-            "number": "TEST-001",
             "status": "pending",
             "items": [
                 {"product_id": keyboard.id, "quantity": 2},
@@ -59,13 +58,14 @@ def test_create_order():
     )
 
     assert response.status_code == 201
-    assert response.data["number"] == "TEST-001"
+    assert response.data["number"].startswith("ORD-")
+    assert len(response.data["number"]) == 24
     assert response.data["total"] == "100.00"
     assert response.data["items"][0]["product_name"] == "Keyboard"
     assert response.data["items"][0]["unit_price"] == "30.00"
     assert response.data["items"][0]["line_total"] == "60.00"
 
-    order = Order.objects.get(number="TEST-001")
+    order = Order.objects.get(number=response.data["number"])
     assert order.user == user
     assert order.items.count() == 2
     assert OrderItem.objects.get(order=order, product=keyboard).quantity == 2
@@ -237,7 +237,6 @@ def test_order_put():
         f"/api/orders/{order.id}/",
         {
             "user_id": user.id,
-            "number": "ORDER-PUT-UPDATED",
             "status": "paid",
             "items": [{"product_id": product.id, "quantity": 2}],
         },
@@ -245,7 +244,7 @@ def test_order_put():
     )
 
     assert response.status_code == 200
-    assert response.data["number"] == "ORDER-PUT-UPDATED"
+    assert response.data["number"] == "ORDER-PUT"
     assert response.data["total"] == "250.00"
     assert response.data["status"] == "paid"
 
@@ -273,7 +272,7 @@ def test_create_order_validation_error():
     )
 
     assert response.status_code == 400
-    assert "number" in response.data["error"]
+    assert "items" in response.data["error"]
 
 
 @pytest.mark.django_db

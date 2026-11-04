@@ -1,3 +1,5 @@
+import uuid
+
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -6,8 +8,17 @@ from users.models import User
 from .managers import OrderQuerySet
 
 
+def generate_order_number() -> str:
+    return f"ORD-{uuid.uuid4().hex[:20].upper()}"
+
+
 class Order(models.Model):
-    number = models.CharField(max_length=50, unique=True)
+    number = models.CharField(
+        max_length=50,
+        unique=True,
+        default=generate_order_number,
+        editable=False,
+    )
     total = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=50, db_index=True)
 
