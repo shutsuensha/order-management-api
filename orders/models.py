@@ -13,6 +13,13 @@ def generate_order_number() -> str:
 
 
 class Order(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PAID = "paid", "Paid"
+        PROCESSING = "processing", "Processing"
+        COMPLETED = "completed", "Completed"
+        CANCELED = "canceled", "Canceled"
+
     number = models.CharField(
         max_length=50,
         unique=True,
@@ -20,7 +27,12 @@ class Order(models.Model):
         editable=False,
     )
     total = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=50, db_index=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
 
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="orders", null=True
