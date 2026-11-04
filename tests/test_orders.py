@@ -7,7 +7,7 @@ from django.dispatch import receiver
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
-from orders.models import Order
+from orders.models import Order, OrderItem
 from products.models import Category, Product
 from users.models import User
 
@@ -41,13 +41,19 @@ def test_create_order():
     client = APIClient()
     client.force_authenticate(user=user)
 
+    keyboard = Product.objects.create(name="Keyboard", price="30.00")
+    mouse = Product.objects.create(name="Mouse", price="40.00")
+
     response = client.post(
         "/api/orders/",
         {
             "user_id": user.id,
             "number": "TEST-001",
-            "total": "100.00",
             "status": "pending",
+            "items": [
+                {"product_id": keyboard.id, "quantity": 2},
+                {"product_id": mouse.id, "quantity": 1},
+            ],
         },
         format="json",
     )
@@ -55,9 +61,14 @@ def test_create_order():
     assert response.status_code == 201
     assert response.data["number"] == "TEST-001"
     assert response.data["total"] == "100.00"
+    assert response.data["items"][0]["product_name"] == "Keyboard"
+    assert response.data["items"][0]["unit_price"] == "30.00"
+    assert response.data["items"][0]["line_total"] == "60.00"
 
     order = Order.objects.get(number="TEST-001")
     assert order.user == user
+    assert order.items.count() == 2
+    assert OrderItem.objects.get(order=order, product=keyboard).quantity == 2
 
 
 @pytest.mark.django_db
@@ -220,14 +231,15 @@ def test_order_put():
 
     client = APIClient()
     client.force_authenticate(user=user)
+    product = Product.objects.create(name="Updated product", price="125.00")
 
     response = client.put(
         f"/api/orders/{order.id}/",
         {
             "user_id": user.id,
             "number": "ORDER-PUT-UPDATED",
-            "total": "250.00",
             "status": "paid",
+            "items": [{"product_id": product.id, "quantity": 2}],
         },
         format="json",
     )
@@ -262,6 +274,36 @@ def test_create_order_validation_error():
 
     assert response.status_code == 400
     assert "number" in response.data["error"]
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_client_total():
+    user = User.objects.create_user(
+        username="total-user",
+        password="12345678",
+        email="total@example.com",
+        age=25,
+    )
+    product = Product.objects.create(name="Product", price="10.00")
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(
+        "/api/orders/",
+        {
+            "number": "TOTAL-001",
+            "status": "pending",
+            "total": "0.01",
+            "items": [{"product_id": product.id, "quantity": 1}],
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert response.data["error"]["total"][0] == (
+        "Total is calculated from order items."
+    )
 
 
 @pytest.mark.django_db
