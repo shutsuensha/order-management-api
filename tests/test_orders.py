@@ -189,6 +189,36 @@ def test_order_patch():
 
 
 @pytest.mark.django_db
+def test_order_status_transition_is_validated():
+    user = User.objects.create_user(
+        username="transition-user",
+        password="12345678",
+        email="transition@example.com",
+        age=25,
+    )
+    order = Order.objects.create(
+        user=user,
+        number="ORDER-TRANSITION",
+        total="100.00",
+        status="pending",
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.patch(
+        f"/api/orders/{order.id}/",
+        {"status": "completed"},
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "status" in response.data["error"]
+    order.refresh_from_db()
+    assert order.status == "pending"
+
+
+@pytest.mark.django_db
 def test_order_delete():
     user = User.objects.create_user(
         username="testuser",

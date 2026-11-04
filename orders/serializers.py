@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from rest_framework import serializers
 
@@ -90,6 +91,13 @@ class OrderSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         items_data = validated_data.pop("items", None)
+        status = validated_data.pop("status", None)
+
+        if status is not None:
+            try:
+                instance.transition_to(status)
+            except ValidationError as exc:
+                raise serializers.ValidationError({"status": exc.messages}) from exc
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

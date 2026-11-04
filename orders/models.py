@@ -1,5 +1,6 @@
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -39,6 +40,35 @@ class Order(models.Model):
     )
 
     objects = OrderQuerySet.as_manager()
+
+    def transition_to(self, new_status: str) -> None:
+        target_status = self.Status(new_status)
+        allowed_transitions = {
+            self.Status.PENDING: {
+                self.Status.PENDING,
+                self.Status.PAID,
+                self.Status.CANCELED,
+            },
+            self.Status.PAID: {
+                self.Status.PAID,
+                self.Status.PROCESSING,
+                self.Status.CANCELED,
+            },
+            self.Status.PROCESSING: {
+                self.Status.PROCESSING,
+                self.Status.COMPLETED,
+                self.Status.CANCELED,
+            },
+            self.Status.COMPLETED: {self.Status.COMPLETED},
+            self.Status.CANCELED: {self.Status.CANCELED},
+        }
+
+        if target_status not in allowed_transitions.get(self.status, set()):
+            raise ValidationError(
+                f"Order status cannot change from {self.status} to {target_status}."
+            )
+
+        self.status = target_status
 
     def __str__(self) -> str:
         return self.number
