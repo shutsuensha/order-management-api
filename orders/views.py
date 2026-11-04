@@ -1,7 +1,9 @@
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, mixins
+from rest_framework import generics, mixins, status
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from .models import Order
 from .permissions import IsOrderOwner
@@ -60,3 +62,23 @@ class OrderDetailView(
 
     def delete(self, request, *args, **kwargs):
         return self.destroy(request, *args, **kwargs)
+
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not instance.can_be_deleted():
+            return Response(
+                {
+                    "detail": (
+                        "Paid, processing, and completed orders cannot be deleted. "
+                        "Cancel the order instead."
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if instance.status == Order.Status.PENDING:
+            instance.release_stock()
+
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)

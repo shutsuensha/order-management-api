@@ -106,13 +106,6 @@ class OrderSerializer(serializers.ModelSerializer):
 
         return total
 
-    @staticmethod
-    def _restore_items_stock(order: Order) -> None:
-        for item in order.items.all():
-            product = Product.objects.select_for_update().get(pk=item.product_id)
-            product.stock += item.quantity
-            product.save(update_fields=["stock"])
-
     @transaction.atomic
     def create(self, validated_data):
         items_data = validated_data.pop("items")
@@ -127,16 +120,27 @@ class OrderSerializer(serializers.ModelSerializer):
         status = validated_data.pop("status", None)
 
         if status is not None:
+            previous_status = instance.status
             try:
                 instance.transition_to(status)
             except ValidationError as exc:
                 raise serializers.ValidationError({"status": exc.messages}) from exc
 
+            if (
+                instance.status == Order.Status.CANCELED
+                and previous_status != Order.Status.CANCELED
+            ):
+                if items_data is not None:
+                    raise serializers.ValidationError(
+                        {"items": "Canceled orders cannot change their items."}
+                    )
+                instance.release_stock()
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
         if items_data is not None:
-            self._restore_items_stock(instance)
+            instance.release_stock()
             instance.items.all().delete()
             instance.total = self._create_items(instance, items_data)
 

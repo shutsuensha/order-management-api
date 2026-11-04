@@ -70,6 +70,20 @@ class Order(models.Model):
 
         self.status = target_status
 
+    def can_be_deleted(self) -> bool:
+        return self.status in {
+            self.Status.PENDING,
+            self.Status.CANCELED,
+        }
+
+    def release_stock(self) -> None:
+        from products.models import Product
+
+        for item in self.items.all():
+            product = Product.objects.select_for_update().get(pk=item.product_id)
+            product.stock += item.quantity
+            product.save(update_fields=["stock"])
+
     def __str__(self) -> str:
         return self.number
 

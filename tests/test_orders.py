@@ -316,6 +316,112 @@ def test_order_delete():
 
 
 @pytest.mark.django_db
+def test_delete_pending_order_releases_reserved_stock():
+    user = User.objects.create_user(
+        username="delete-stock-user",
+        password="12345678",
+        email="delete-stock@example.com",
+        age=25,
+    )
+    product = Product.objects.create(
+        name="Delete stock product",
+        price="10.00",
+        stock=0,
+    )
+    order = Order.objects.create(
+        user=user,
+        number="ORDER-DELETE-STOCK",
+        total="20.00",
+        status="pending",
+    )
+    OrderItem.objects.create(
+        order=order,
+        product=product,
+        quantity=2,
+        product_name=product.name,
+        unit_price=product.price,
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.delete(f"/api/orders/{order.id}/")
+
+    assert response.status_code == 204
+    product.refresh_from_db()
+    assert product.stock == 2
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("order_status", ["paid", "processing", "completed"])
+def test_order_delete_protected_status(order_status):
+    user = User.objects.create_user(
+        username=f"delete-{order_status}",
+        password="12345678",
+        email=f"delete-{order_status}@example.com",
+        age=25,
+    )
+    order = Order.objects.create(
+        user=user,
+        number=f"ORDER-DELETE-{order_status.upper()}",
+        total="100.00",
+        status=order_status,
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.delete(f"/api/orders/{order.id}/")
+
+    assert response.status_code == 409
+    assert "cannot be deleted" in response.data["detail"]
+    assert Order.objects.filter(id=order.id).exists()
+
+
+@pytest.mark.django_db
+def test_cancel_order_releases_reserved_stock():
+    user = User.objects.create_user(
+        username="cancel-stock-user",
+        password="12345678",
+        email="cancel-stock@example.com",
+        age=25,
+    )
+    product = Product.objects.create(
+        name="Reserved product",
+        price="10.00",
+        stock=2,
+    )
+    order = Order.objects.create(
+        user=user,
+        number="ORDER-CANCEL-STOCK",
+        total="20.00",
+        status="pending",
+    )
+    OrderItem.objects.create(
+        order=order,
+        product=product,
+        quantity=2,
+        product_name=product.name,
+        unit_price=product.price,
+    )
+    product.stock = 0
+    product.save(update_fields=["stock"])
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.patch(
+        f"/api/orders/{order.id}/",
+        {"status": "canceled"},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    product.refresh_from_db()
+    assert product.stock == 2
+
+
+@pytest.mark.django_db
 def test_order_put():
     user = User.objects.create_user(
         username="testuser",
