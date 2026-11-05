@@ -93,3 +93,53 @@ def test_me_endpoint_requires_authentication():
     response = APIClient().get("/api/auth/me/")
 
     assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_user_can_change_password_securely():
+    user = User.objects.create_user(
+        username="password-user",
+        email="password@example.com",
+        password="OldPassword123!",
+        age=25,
+    )
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(
+        "/api/auth/change-password/",
+        {
+            "old_password": "OldPassword123!",
+            "new_password": "NewPassword456!",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 204
+    user.refresh_from_db()
+    assert user.check_password("NewPassword456!")
+    assert not user.check_password("OldPassword123!")
+
+
+@pytest.mark.django_db
+def test_password_change_rejects_wrong_current_password():
+    user = User.objects.create_user(
+        username="wrong-password-user",
+        email="wrong-password@example.com",
+        password="OldPassword123!",
+        age=25,
+    )
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(
+        "/api/auth/change-password/",
+        {
+            "old_password": "WrongPassword123!",
+            "new_password": "NewPassword456!",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "old_password" in response.data["error"]
