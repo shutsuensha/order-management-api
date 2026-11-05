@@ -52,3 +52,44 @@ def test_admin_can_manage_users():
     response = client.get("/api/users/")
 
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_user_can_view_and_edit_own_profile():
+    user = User.objects.create_user(
+        username="me-user",
+        email="me@example.com",
+        password="StrongPassword123!",
+        age=25,
+    )
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.get("/api/auth/me/")
+
+    assert response.status_code == 200
+    assert response.data["username"] == "me-user"
+    assert response.data["profile"] is None
+
+    response = client.patch(
+        "/api/auth/me/",
+        {
+            "email": "updated@example.com",
+            "profile": {"bio": "Updated bio"},
+        },
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.data["email"] == "updated@example.com"
+    assert response.data["profile"]["bio"] == "Updated bio"
+    user.refresh_from_db()
+    assert user.email == "updated@example.com"
+    assert user.profile.bio == "Updated bio"
+
+
+@pytest.mark.django_db
+def test_me_endpoint_requires_authentication():
+    response = APIClient().get("/api/auth/me/")
+
+    assert response.status_code == 401
