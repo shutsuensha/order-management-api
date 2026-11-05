@@ -4,18 +4,27 @@ from rest_framework.response import Response
 
 from .models import User
 from .permissions import IsAdminOrRegistration
-from .serializers import MeSerializer, PasswordChangeSerializer, UserSerializer
+from .serializers import (
+    AdminUserSerializer,
+    MeSerializer,
+    PasswordChangeSerializer,
+    RegistrationSerializer,
+)
 
 
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.select_related("profile").order_by("id")
-    serializer_class = UserSerializer
     permission_classes = [IsAdminOrRegistration]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return RegistrationSerializer
+        return AdminUserSerializer
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = AdminUserSerializer
     permission_classes = [IsAdminUser]
 
 

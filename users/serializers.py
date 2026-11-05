@@ -11,13 +11,13 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = ["id", "user", "bio"]
 
 
-class UserSerializer(serializers.ModelSerializer):
-    profile = ProfileSerializer(read_only=True)
+class RegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "age", "profile", "password"]
+        fields = ["id", "username", "email", "age", "password"]
+        read_only_fields = ["id"]
 
     def validate_age(self, value: int) -> int:
         if value < 18:
@@ -26,6 +26,36 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
+
+
+class PublicUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "age"]
+        read_only_fields = fields
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "age",
+            "profile",
+            "is_staff",
+            "is_active",
+            "date_joined",
+        ]
+        read_only_fields = ["id", "date_joined"]
+
+    def validate_age(self, value: int) -> int:
+        if value < 18:
+            raise serializers.ValidationError("User must be at least 18 years old.")
+        return value
 
 
 class MeProfileSerializer(serializers.ModelSerializer):

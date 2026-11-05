@@ -5,7 +5,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from products.models import Product
-from users.serializers import UserSerializer
+from users.serializers import PublicUserSerializer
 
 from .models import Order, OrderItem
 
@@ -37,7 +37,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = PublicUserSerializer(read_only=True)
     user_id = serializers.PrimaryKeyRelatedField(source="user", read_only=True)
     items = OrderItemSerializer(many=True)
 

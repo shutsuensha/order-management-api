@@ -52,6 +52,7 @@ def test_admin_can_manage_users():
     response = client.get("/api/users/")
 
     assert response.status_code == 200
+    assert "password" not in response.data["results"][0]
 
 
 @pytest.mark.django_db
