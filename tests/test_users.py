@@ -1,6 +1,7 @@
 import pytest
 from django.conf import settings
 from rest_framework.test import APIClient
+from rest_framework.throttling import ScopedRateThrottle
 
 from users.models import User
 from users.serializers import ProfileSerializer
@@ -17,6 +18,14 @@ def test_jwt_rotation_and_lifetime_settings():
     assert settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].days == 7
     assert settings.SIMPLE_JWT["ROTATE_REFRESH_TOKENS"] is True
     assert settings.SIMPLE_JWT["BLACKLIST_AFTER_ROTATION"] is True
+
+
+def test_auth_throttle_rates_are_configured():
+    assert settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["login"] == "5/minute"
+    assert (
+        settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["registration"] == "5/minute"
+    )
+    assert ScopedRateThrottle.scope_attr == "throttle_scope"
 
 
 @pytest.mark.django_db

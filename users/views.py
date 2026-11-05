@@ -1,6 +1,7 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
 from .models import User
 from .permissions import IsAdminOrRegistration
@@ -20,6 +21,13 @@ class UserListCreateView(generics.ListCreateAPIView):
         if self.request.method == "POST":
             return RegistrationSerializer
         return AdminUserSerializer
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [ScopedRateThrottle()]
+        return []
+
+    throttle_scope = "registration"
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):

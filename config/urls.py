@@ -4,16 +4,17 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
 )
+
+from config.auth_views import ThrottledTokenObtainPairView
 
 urlpatterns = [
     path("api/", include("users.urls")),
     path("api/", include("products.urls")),
     path("api/", include("orders.urls")),
     path("api/", include("categories.urls")),
-    path("api/token/", TokenObtainPairView.as_view()),
+    path("api/token/", ThrottledTokenObtainPairView.as_view()),
     path("api/token/refresh/", TokenRefreshView.as_view()),
     path(
         "api/schema/",
