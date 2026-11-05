@@ -1,4 +1,5 @@
 import pytest
+from django.conf import settings
 from rest_framework.test import APIClient
 
 from users.models import User
@@ -9,6 +10,47 @@ def test_profile_user_is_read_only():
     serializer = ProfileSerializer()
 
     assert serializer.fields["user"].read_only
+
+
+def test_jwt_rotation_and_lifetime_settings():
+    assert settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds() == 900
+    assert settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].days == 7
+    assert settings.SIMPLE_JWT["ROTATE_REFRESH_TOKENS"] is True
+    assert settings.SIMPLE_JWT["BLACKLIST_AFTER_ROTATION"] is True
+
+
+@pytest.mark.django_db
+def test_refresh_token_is_rotated_and_blacklisted():
+    User.objects.create_user(
+        username="jwt-user",
+        email="jwt@example.com",
+        password="StrongPassword123!",
+        age=25,
+    )
+    client = APIClient()
+
+    token_response = client.post(
+        "/api/token/",
+        {"username": "jwt-user", "password": "StrongPassword123!"},
+        format="json",
+    )
+    assert token_response.status_code == 200
+    old_refresh = token_response.data["refresh"]
+
+    refresh_response = client.post(
+        "/api/token/refresh/",
+        {"refresh": old_refresh},
+        format="json",
+    )
+    assert refresh_response.status_code == 200
+    assert refresh_response.data["refresh"] != old_refresh
+
+    reused_response = client.post(
+        "/api/token/refresh/",
+        {"refresh": old_refresh},
+        format="json",
+    )
+    assert reused_response.status_code == 401
 
 
 @pytest.mark.django_db
