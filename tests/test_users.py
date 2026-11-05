@@ -39,7 +39,7 @@ def test_refresh_token_is_rotated_and_blacklisted():
     client = APIClient()
 
     token_response = client.post(
-        "/api/token/",
+        "/api/v1/token/",
         {"username": "jwt-user", "password": "StrongPassword123!"},
         format="json",
     )
@@ -47,7 +47,7 @@ def test_refresh_token_is_rotated_and_blacklisted():
     old_refresh = token_response.data["refresh"]
 
     refresh_response = client.post(
-        "/api/token/refresh/",
+        "/api/v1/token/refresh/",
         {"refresh": old_refresh},
         format="json",
     )
@@ -55,7 +55,7 @@ def test_refresh_token_is_rotated_and_blacklisted():
     assert refresh_response.data["refresh"] != old_refresh
 
     reused_response = client.post(
-        "/api/token/refresh/",
+        "/api/v1/token/refresh/",
         {"refresh": old_refresh},
         format="json",
     )
@@ -65,7 +65,7 @@ def test_refresh_token_is_rotated_and_blacklisted():
 @pytest.mark.django_db
 def test_registration_is_public():
     response = APIClient().post(
-        "/api/users/",
+        "/api/v1/users/",
         {
             "username": "new-user",
             "email": "new-user@example.com",
@@ -90,7 +90,7 @@ def test_user_list_is_admin_only():
         age=25,
     )
 
-    response = APIClient().get("/api/users/")
+    response = APIClient().get("/api/v1/users/")
 
     assert response.status_code in {401, 403}
 
@@ -107,7 +107,7 @@ def test_admin_can_manage_users():
     client = APIClient()
     client.force_authenticate(user=admin)
 
-    response = client.get("/api/users/")
+    response = client.get("/api/v1/users/")
 
     assert response.status_code == 200
     assert "password" not in response.data["results"][0]
@@ -124,14 +124,14 @@ def test_user_can_view_and_edit_own_profile():
     client = APIClient()
     client.force_authenticate(user=user)
 
-    response = client.get("/api/auth/me/")
+    response = client.get("/api/v1/auth/me/")
 
     assert response.status_code == 200
     assert response.data["username"] == "me-user"
     assert response.data["profile"] is None
 
     response = client.patch(
-        "/api/auth/me/",
+        "/api/v1/auth/me/",
         {
             "email": "updated@example.com",
             "profile": {"bio": "Updated bio"},
@@ -149,7 +149,7 @@ def test_user_can_view_and_edit_own_profile():
 
 @pytest.mark.django_db
 def test_me_endpoint_requires_authentication():
-    response = APIClient().get("/api/auth/me/")
+    response = APIClient().get("/api/v1/auth/me/")
 
     assert response.status_code == 401
 
@@ -166,7 +166,7 @@ def test_user_can_change_password_securely():
     client.force_authenticate(user=user)
 
     response = client.post(
-        "/api/auth/change-password/",
+        "/api/v1/auth/change-password/",
         {
             "old_password": "OldPassword123!",
             "new_password": "NewPassword456!",
@@ -192,7 +192,7 @@ def test_password_change_rejects_wrong_current_password():
     client.force_authenticate(user=user)
 
     response = client.post(
-        "/api/auth/change-password/",
+        "/api/v1/auth/change-password/",
         {
             "old_password": "WrongPassword123!",
             "new_password": "NewPassword456!",

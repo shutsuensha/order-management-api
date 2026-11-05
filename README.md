@@ -45,19 +45,19 @@ Python 3.14, Django 6, Django REST Framework, PostgreSQL, Redis, Docker Compose,
    make run
    ```
 
-Swagger доступен по адресу <http://127.0.0.1:8000/api/docs/>.
+Swagger доступен по адресу <http://127.0.0.1:8000/api/v1/docs/>.
 
 ## Основные endpoint'ы
 
 | Метод | URL | Назначение |
 | --- | --- | --- |
-| POST | `/api/token/` | получить access/refresh JWT |
-| POST | `/api/token/refresh/` | обновить access-токен |
-| CRUD | `/api/users/` | пользователи |
-| CRUD | `/api/categories/` | категории |
-| CRUD | `/api/products/` | товары, только для администратора |
-| GET/POST | `/api/orders/` | список и создание собственных заказов |
-| GET/PATCH/DELETE | `/api/orders/<id>/` | работа со своим заказом |
+| POST | `/api/v1/token/` | получить access/refresh JWT |
+| POST | `/api/v1/token/refresh/` | обновить access-токен |
+| CRUD | `/api/v1/users/` | пользователи |
+| CRUD | `/api/v1/categories/` | категории |
+| CRUD | `/api/v1/products/` | товары, только для администратора |
+| GET/POST | `/api/v1/orders/` | список и создание собственных заказов |
+| GET/PATCH/DELETE | `/api/v1/orders/<id>/` | работа со своим заказом |
 
 Для защищённых запросов передайте заголовок:
 

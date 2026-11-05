@@ -10,19 +10,19 @@ from rest_framework_simplejwt.views import (
 from config.auth_views import ThrottledTokenObtainPairView
 
 urlpatterns = [
-    path("api/", include("users.urls")),
-    path("api/", include("products.urls")),
-    path("api/", include("orders.urls")),
-    path("api/", include("categories.urls")),
-    path("api/token/", ThrottledTokenObtainPairView.as_view()),
-    path("api/token/refresh/", TokenRefreshView.as_view()),
+    path("api/v1/", include("users.urls")),
+    path("api/v1/", include("products.urls")),
+    path("api/v1/", include("orders.urls")),
+    path("api/v1/", include("categories.urls")),
+    path("api/v1/token/", ThrottledTokenObtainPairView.as_view()),
+    path("api/v1/token/refresh/", TokenRefreshView.as_view()),
     path(
-        "api/schema/",
+        "api/v1/schema/",
         SpectacularAPIView.as_view(),
         name="schema",
     ),
     path(
-        "api/docs/",
+        "api/v1/docs/",
         SpectacularSwaggerView.as_view(url_name="schema"),
     ),
 ]

@@ -24,7 +24,7 @@ def test_orders_list():
     client = APIClient()
     client.force_authenticate(user=user)
 
-    response = client.get("/api/orders/")
+    response = client.get("/api/v1/orders/")
 
     assert response.status_code == 200
 
@@ -45,7 +45,7 @@ def test_create_order():
     mouse = Product.objects.create(name="Mouse", price="40.00", stock=1)
 
     response = client.post(
-        "/api/orders/",
+        "/api/v1/orders/",
         {
             "user_id": user.id,
             "status": "pending",
@@ -79,7 +79,7 @@ def test_create_order():
 def test_orders_list_unauthorized():
     client = APIClient()
 
-    response = client.get("/api/orders/")
+    response = client.get("/api/v1/orders/")
 
     assert response.status_code == 401
 
@@ -102,7 +102,7 @@ def test_create_order_rejects_insufficient_stock_atomically():
     client.force_authenticate(user=user)
 
     response = client.post(
-        "/api/orders/",
+        "/api/v1/orders/",
         {
             "status": "pending",
             "items": [{"product_id": product.id, "quantity": 2}],
@@ -145,7 +145,7 @@ def test_order_detail_forbidden_for_another_user():
     client = APIClient()
     client.force_authenticate(user=user2)
 
-    response = client.get(f"/api/orders/{order.id}/")
+    response = client.get(f"/api/v1/orders/{order.id}/")
 
     assert response.status_code == 403
 
@@ -175,7 +175,7 @@ def test_orders_list_contains_only_current_users_orders():
     client = APIClient()
     client.force_authenticate(user=user)
 
-    response = client.get("/api/orders/")
+    response = client.get("/api/v1/orders/")
 
     assert response.status_code == 200
     assert [item["number"] for item in response.data["results"]] == ["OWN"]
@@ -193,7 +193,7 @@ def test_order_detail_not_found():
     client = APIClient()
     client.force_authenticate(user=user)
 
-    response = client.get("/api/orders/9999/")
+    response = client.get("/api/v1/orders/9999/")
 
     assert response.status_code == 404
 
@@ -218,7 +218,7 @@ def test_order_patch():
     client.force_authenticate(user=user)
 
     response = client.patch(
-        f"/api/orders/{order.id}/",
+        f"/api/v1/orders/{order.id}/",
         {"status": "paid"},
         format="json",
     )
@@ -251,7 +251,7 @@ def test_admin_can_set_paid_status():
     client.force_authenticate(user=admin)
 
     response = client.patch(
-        f"/api/orders/{order.id}/",
+        f"/api/v1/orders/{order.id}/",
         {"status": "paid"},
         format="json",
     )
@@ -279,7 +279,7 @@ def test_order_status_transition_is_validated():
     client.force_authenticate(user=user)
 
     response = client.patch(
-        f"/api/orders/{order.id}/",
+        f"/api/v1/orders/{order.id}/",
         {"status": "completed"},
         format="json",
     )
@@ -309,7 +309,7 @@ def test_order_delete():
     client = APIClient()
     client.force_authenticate(user=user)
 
-    response = client.delete(f"/api/orders/{order.id}/")
+    response = client.delete(f"/api/v1/orders/{order.id}/")
 
     assert response.status_code == 204
     assert not Order.objects.filter(id=order.id).exists()
@@ -345,7 +345,7 @@ def test_delete_pending_order_releases_reserved_stock():
     client = APIClient()
     client.force_authenticate(user=user)
 
-    response = client.delete(f"/api/orders/{order.id}/")
+    response = client.delete(f"/api/v1/orders/{order.id}/")
 
     assert response.status_code == 204
     product.refresh_from_db()
@@ -371,7 +371,7 @@ def test_order_delete_protected_status(order_status):
     client = APIClient()
     client.force_authenticate(user=user)
 
-    response = client.delete(f"/api/orders/{order.id}/")
+    response = client.delete(f"/api/v1/orders/{order.id}/")
 
     assert response.status_code == 409
     assert "cannot be deleted" in response.data["detail"]
@@ -411,7 +411,7 @@ def test_cancel_order_releases_reserved_stock():
     client.force_authenticate(user=user)
 
     response = client.patch(
-        f"/api/orders/{order.id}/",
+        f"/api/v1/orders/{order.id}/",
         {"status": "canceled"},
         format="json",
     )
@@ -442,7 +442,7 @@ def test_order_put():
     product = Product.objects.create(name="Updated product", price="125.00", stock=2)
 
     response = client.put(
-        f"/api/orders/{order.id}/",
+        f"/api/v1/orders/{order.id}/",
         {
             "user_id": user.id,
             "status": "pending",
@@ -470,7 +470,7 @@ def test_create_order_validation_error():
     client.force_authenticate(user=user)
 
     response = client.post(
-        "/api/orders/",
+        "/api/v1/orders/",
         {
             "user_id": user.id,
             "total": "100.00",
@@ -497,7 +497,7 @@ def test_create_order_rejects_client_total():
     client.force_authenticate(user=user)
 
     response = client.post(
-        "/api/orders/",
+        "/api/v1/orders/",
         {
             "number": "TOTAL-001",
             "status": "pending",

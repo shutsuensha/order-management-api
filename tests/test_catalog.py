@@ -16,8 +16,8 @@ def test_catalog_read_is_public():
 
     client = APIClient()
 
-    category_response = client.get("/api/categories/")
-    product_response = client.get("/api/products/")
+    category_response = client.get("/api/v1/categories/")
+    product_response = client.get("/api/v1/products/")
 
     assert category_response.status_code == 200
     assert product_response.status_code == 200
@@ -28,12 +28,12 @@ def test_catalog_mutations_require_admin():
     client = APIClient()
 
     category_response = client.post(
-        "/api/categories/",
+        "/api/v1/categories/",
         {"name": "Protected category"},
         format="json",
     )
     product_response = client.post(
-        "/api/products/",
+        "/api/v1/products/",
         {"name": "Protected product", "price": "10.00", "stock": 1},
         format="json",
     )
