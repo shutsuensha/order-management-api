@@ -1,16 +1,17 @@
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from config.permissions import IsAdminOrReadOnly
 
 from .models import Product
 from .serializers import ProductSerializer
 
 
 class ProductListCreateAPIView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrReadOnly]
     serializer_class = ProductSerializer
 
     @extend_schema(operation_id="products_list")
@@ -38,7 +39,7 @@ class ProductListCreateAPIView(APIView):
 
 
 class ProductDetailAPIView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrReadOnly]
     serializer_class = ProductSerializer
 
     @extend_schema(operation_id="products_detail")
