@@ -2,6 +2,13 @@ import pytest
 from rest_framework.test import APIClient
 
 from users.models import User
+from users.serializers import ProfileSerializer
+
+
+def test_profile_user_is_read_only():
+    serializer = ProfileSerializer()
+
+    assert serializer.fields["user"].read_only
 
 
 @pytest.mark.django_db
