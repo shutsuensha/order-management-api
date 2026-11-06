@@ -25,6 +25,13 @@ class RegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("User must be at least 18 years old.")
         return value
 
+    def validate_password(self, value):
+        try:
+            validate_password(value)
+        except ValidationError as exc:
+            raise serializers.ValidationError(exc.messages) from exc
+        return value
+
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
 

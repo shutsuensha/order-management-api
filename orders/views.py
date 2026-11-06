@@ -50,6 +50,12 @@ class OrderListCreateView(
                 description="Page number (default: 1).",
             ),
             OpenApiParameter(
+                name="page_size",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Number of results per page (maximum: 100).",
+            ),
+            OpenApiParameter(
                 name="status",
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,

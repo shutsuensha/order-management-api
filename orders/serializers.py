@@ -54,6 +54,17 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["number", "total"]
 
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError("At least one order item is required.")
+
+        product_ids = [item["product"].pk for item in value]
+        if len(product_ids) != len(set(product_ids)):
+            raise serializers.ValidationError(
+                "Each product can appear only once in an order."
+            )
+        return value
+
     def validate(self, attrs):
         if "total" in self.initial_data:
             raise serializers.ValidationError(
