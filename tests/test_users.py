@@ -201,4 +201,4 @@ def test_password_change_rejects_wrong_current_password():
     )
 
     assert response.status_code == 400
-    assert "old_password" in response.data["error"]
+    assert "old_password" in response.data["fields"]

@@ -5,6 +5,8 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from config.errors import conflict_response
+
 from .models import Order
 from .permissions import IsOrderOwner
 from .serializers import OrderSerializer
@@ -67,14 +69,11 @@ class OrderDetailView(
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         if not instance.can_be_deleted():
-            return Response(
-                {
-                    "detail": (
-                        "Paid, processing, and completed orders cannot be deleted. "
-                        "Cancel the order instead."
-                    )
-                },
-                status=status.HTTP_409_CONFLICT,
+            return conflict_response(
+                request,
+                "order_not_deletable",
+                "Paid, processing, and completed orders cannot be deleted. "
+                "Cancel the order instead.",
             )
 
         if instance.status == Order.Status.PENDING:

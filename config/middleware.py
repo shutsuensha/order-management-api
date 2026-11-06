@@ -1,5 +1,6 @@
 import logging
 import time
+import uuid
 
 from django.http import HttpRequest, HttpResponse
 
@@ -11,6 +12,7 @@ class RequestTimeMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
+        request.request_id = uuid.uuid4().hex
         start = time.perf_counter()
 
         response = self.get_response(request)
@@ -24,5 +26,6 @@ class RequestTimeMiddleware:
             response.status_code,
             duration,
         )
+        response["X-Request-ID"] = request.request_id
 
         return response

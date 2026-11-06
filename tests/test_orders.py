@@ -111,7 +111,7 @@ def test_create_order_rejects_insufficient_stock_atomically():
     )
 
     assert response.status_code == 400
-    assert response.data["error"]["items"] == (
+    assert response.data["fields"]["items"] == (
         "Insufficient stock for Limited product."
     )
     assert not Order.objects.filter(user=user).exists()
@@ -224,7 +224,7 @@ def test_order_patch():
     )
 
     assert response.status_code == 400
-    assert response.data["error"]["status"][0] == (
+    assert response.data["fields"]["status"][0] == (
         "Only an administrator can set this status."
     )
     order.refresh_from_db()
@@ -285,7 +285,7 @@ def test_order_status_transition_is_validated():
     )
 
     assert response.status_code == 400
-    assert "status" in response.data["error"]
+    assert "status" in response.data["fields"]
     order.refresh_from_db()
     assert order.status == "pending"
 
@@ -480,7 +480,7 @@ def test_create_order_validation_error():
     )
 
     assert response.status_code == 400
-    assert "items" in response.data["error"]
+    assert "items" in response.data["fields"]
 
 
 @pytest.mark.django_db
@@ -508,7 +508,7 @@ def test_create_order_rejects_client_total():
     )
 
     assert response.status_code == 400
-    assert response.data["error"]["total"][0] == (
+    assert response.data["fields"]["total"][0] == (
         "Total is calculated from order items."
     )
 
