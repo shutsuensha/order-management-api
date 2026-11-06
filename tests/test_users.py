@@ -29,12 +29,11 @@ def test_auth_throttle_rates_are_configured():
 
 
 @pytest.mark.django_db
-def test_refresh_token_is_rotated_and_blacklisted():
-    User.objects.create_user(
+def test_refresh_token_is_rotated_and_blacklisted(user_factory):
+    user_factory(
         username="jwt-user",
         email="jwt@example.com",
         password="StrongPassword123!",
-        age=25,
     )
     client = APIClient()
 
@@ -82,13 +81,8 @@ def test_registration_is_public():
 
 
 @pytest.mark.django_db
-def test_user_list_is_admin_only():
-    User.objects.create_user(
-        username="regular-user",
-        email="regular@example.com",
-        password="StrongPassword123!",
-        age=25,
-    )
+def test_user_list_is_admin_only(user_factory):
+    user_factory(username="regular-user", email="regular@example.com")
 
     response = APIClient().get("/api/v1/users/")
 
@@ -96,16 +90,11 @@ def test_user_list_is_admin_only():
 
 
 @pytest.mark.django_db
-def test_admin_can_manage_users():
-    admin = User.objects.create_user(
-        username="admin-user",
-        email="admin@example.com",
-        password="StrongPassword123!",
-        age=30,
-        is_staff=True,
+def test_admin_can_manage_users(user_factory, authenticated_client):
+    admin = user_factory(
+        username="admin-user", email="admin@example.com", age=30, is_staff=True
     )
-    client = APIClient()
-    client.force_authenticate(user=admin)
+    client = authenticated_client(admin)
 
     response = client.get("/api/v1/users/")
 
@@ -114,15 +103,9 @@ def test_admin_can_manage_users():
 
 
 @pytest.mark.django_db
-def test_user_can_view_and_edit_own_profile():
-    user = User.objects.create_user(
-        username="me-user",
-        email="me@example.com",
-        password="StrongPassword123!",
-        age=25,
-    )
-    client = APIClient()
-    client.force_authenticate(user=user)
+def test_user_can_view_and_edit_own_profile(user_factory, authenticated_client):
+    user = user_factory(username="me-user", email="me@example.com")
+    client = authenticated_client(user)
 
     response = client.get("/api/v1/auth/me/")
 
@@ -155,15 +138,13 @@ def test_me_endpoint_requires_authentication():
 
 
 @pytest.mark.django_db
-def test_user_can_change_password_securely():
-    user = User.objects.create_user(
+def test_user_can_change_password_securely(user_factory, authenticated_client):
+    user = user_factory(
         username="password-user",
         email="password@example.com",
         password="OldPassword123!",
-        age=25,
     )
-    client = APIClient()
-    client.force_authenticate(user=user)
+    client = authenticated_client(user)
 
     response = client.post(
         "/api/v1/auth/change-password/",
@@ -181,15 +162,15 @@ def test_user_can_change_password_securely():
 
 
 @pytest.mark.django_db
-def test_password_change_rejects_wrong_current_password():
-    user = User.objects.create_user(
+def test_password_change_rejects_wrong_current_password(
+    user_factory, authenticated_client
+):
+    user = user_factory(
         username="wrong-password-user",
         email="wrong-password@example.com",
         password="OldPassword123!",
-        age=25,
     )
-    client = APIClient()
-    client.force_authenticate(user=user)
+    client = authenticated_client(user)
 
     response = client.post(
         "/api/v1/auth/change-password/",

@@ -13,16 +13,9 @@ from users.models import User
 
 
 @pytest.mark.django_db
-def test_orders_list():
-    user = User.objects.create_user(
-        username="testuser",
-        password="12345678",
-        email="test@example.com",
-        age=25,
-    )
-
-    client = APIClient()
-    client.force_authenticate(user=user)
+def test_orders_list(user_factory, authenticated_client):
+    user = user_factory()
+    client = authenticated_client(user)
 
     response = client.get("/api/v1/orders/")
 
@@ -30,19 +23,12 @@ def test_orders_list():
 
 
 @pytest.mark.django_db
-def test_create_order():
-    user = User.objects.create_user(
-        username="testuser",
-        password="12345678",
-        email="test@example.com",
-        age=25,
-    )
+def test_create_order(user_factory, product_factory, authenticated_client):
+    user = user_factory(password="12345678")
+    client = authenticated_client(user)
 
-    client = APIClient()
-    client.force_authenticate(user=user)
-
-    keyboard = Product.objects.create(name="Keyboard", price="30.00", stock=2)
-    mouse = Product.objects.create(name="Mouse", price="40.00", stock=1)
+    keyboard = product_factory(name="Keyboard", price="30.00", stock=2)
+    mouse = product_factory(name="Mouse", price="40.00", stock=1)
 
     response = client.post(
         "/api/v1/orders/",
@@ -85,21 +71,12 @@ def test_orders_list_unauthorized():
 
 
 @pytest.mark.django_db
-def test_create_order_rejects_insufficient_stock_atomically():
-    user = User.objects.create_user(
-        username="stock-user",
-        password="12345678",
-        email="stock@example.com",
-        age=25,
-    )
-    product = Product.objects.create(
-        name="Limited product",
-        price="10.00",
-        stock=1,
-    )
-
-    client = APIClient()
-    client.force_authenticate(user=user)
+def test_create_order_rejects_insufficient_stock_atomically(
+    user_factory, product_factory, authenticated_client
+):
+    user = user_factory(password="12345678")
+    product = product_factory(name="Limited product", price="10.00", stock=1)
+    client = authenticated_client(user)
 
     response = client.post(
         "/api/v1/orders/",

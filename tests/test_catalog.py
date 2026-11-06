@@ -2,17 +2,14 @@ import pytest
 from rest_framework.test import APIClient
 
 from categories.models import Category
-from products.models import Product
 
 
 @pytest.mark.django_db
-def test_catalog_read_is_public():
+def test_catalog_read_is_public(product_factory):
     category = Category.objects.create(name="Public category")
-    Product.objects.create(
-        name="Public product",
-        price="10.00",
-        stock=3,
-    ).categories.add(category)
+    product_factory(name="Public product", price="10.00", stock=3).categories.add(
+        category
+    )
 
     client = APIClient()
 
