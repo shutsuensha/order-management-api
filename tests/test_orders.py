@@ -422,6 +422,68 @@ def test_cancel_order_releases_reserved_stock():
 
 
 @pytest.mark.django_db
+def test_cancel_endpoint_changes_status_and_releases_reserved_stock():
+    user = User.objects.create_user(
+        username="cancel-endpoint-user",
+        password="12345678",
+        email="cancel-endpoint@example.com",
+        age=25,
+    )
+    product = Product.objects.create(
+        name="Cancel endpoint product",
+        price="10.00",
+        stock=0,
+    )
+    order = Order.objects.create(
+        user=user,
+        number="ORDER-CANCEL-ENDPOINT",
+        total="20.00",
+        status="pending",
+    )
+    OrderItem.objects.create(
+        order=order,
+        product=product,
+        quantity=2,
+        product_name=product.name,
+        unit_price=product.price,
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(f"/api/v1/orders/{order.id}/cancel/")
+
+    assert response.status_code == 200
+    assert response.data["status"] == "canceled"
+    product.refresh_from_db()
+    assert product.stock == 2
+
+
+@pytest.mark.django_db
+def test_cancel_endpoint_rejects_completed_order():
+    user = User.objects.create_user(
+        username="cancel-completed-user",
+        password="12345678",
+        email="cancel-completed@example.com",
+        age=25,
+    )
+    order = Order.objects.create(
+        user=user,
+        number="ORDER-CANCEL-COMPLETED",
+        total="20.00",
+        status="completed",
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(f"/api/v1/orders/{order.id}/cancel/")
+
+    assert response.status_code == 409
+    assert response.data["code"] == "order_not_cancelable"
+
+
+@pytest.mark.django_db
 def test_order_put():
     user = User.objects.create_user(
         username="testuser",

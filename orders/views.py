@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
@@ -117,3 +118,37 @@ class OrderDetailView(
 
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OrderCancelView(generics.GenericAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated, IsOrderOwner]
+
+    @extend_schema(
+        operation_id="orders_cancel",
+        request=None,
+        responses=OrderSerializer,
+        description="Cancel an order and release its reserved stock.",
+    )
+    def post(self, request, *args, **kwargs):
+        with transaction.atomic():
+            order = self.get_object()
+            order = Order.objects.select_for_update().get(pk=order.pk)
+
+            if order.status == Order.Status.CANCELED:
+                return Response(self.get_serializer(order).data)
+
+            try:
+                order.transition_to(Order.Status.CANCELED)
+            except ValidationError:
+                return conflict_response(
+                    request,
+                    "order_not_cancelable",
+                    "Completed orders cannot be canceled.",
+                )
+
+            order.release_stock()
+            order.save(update_fields=["status"])
+
+        return Response(self.get_serializer(order).data)
