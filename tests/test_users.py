@@ -62,6 +62,35 @@ def test_refresh_token_is_rotated_and_blacklisted(user_factory):
 
 
 @pytest.mark.django_db
+def test_login_returns_access_and_refresh_tokens(user_factory):
+    user_factory(username="login-user", password="StrongPassword123!")
+
+    response = APIClient().post(
+        "/api/v1/token/",
+        {"username": "login-user", "password": "StrongPassword123!"},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    assert response.data["access"]
+    assert response.data["refresh"]
+
+
+@pytest.mark.django_db
+def test_login_rejects_invalid_password(user_factory):
+    user_factory(username="invalid-login-user", password="StrongPassword123!")
+
+    response = APIClient().post(
+        "/api/v1/token/",
+        {"username": "invalid-login-user", "password": "WrongPassword123!"},
+        format="json",
+    )
+
+    assert response.status_code == 401
+    assert response.data["code"] == "authentication_error"
+
+
+@pytest.mark.django_db
 def test_registration_is_public():
     response = APIClient().post(
         "/api/v1/users/",
@@ -81,12 +110,37 @@ def test_registration_is_public():
 
 
 @pytest.mark.django_db
+def test_registration_rejects_weak_password():
+    response = APIClient().post(
+        "/api/v1/users/",
+        {
+            "username": "weak-password-user",
+            "email": "weak-password@example.com",
+            "age": 25,
+            "password": "123",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 400
+    assert "password" in response.data["fields"]
+
+
+@pytest.mark.django_db
 def test_user_list_is_admin_only(user_factory):
     user_factory(username="regular-user", email="regular@example.com")
 
     response = APIClient().get("/api/v1/users/")
 
     assert response.status_code in {401, 403}
+
+
+@pytest.mark.django_db
+def test_regular_user_cannot_manage_users(user_factory, authenticated_client):
+    user = user_factory(username="regular-manager-user")
+    response = authenticated_client(user).get("/api/v1/users/")
+
+    assert response.status_code == 403
 
 
 @pytest.mark.django_db
