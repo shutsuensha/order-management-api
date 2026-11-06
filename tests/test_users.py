@@ -1,5 +1,6 @@
 import pytest
 from django.conf import settings
+from django.core.cache import cache
 from rest_framework.test import APIClient
 from rest_framework.throttling import ScopedRateThrottle
 
@@ -79,6 +80,7 @@ def test_login_returns_access_and_refresh_tokens(user_factory):
 @pytest.mark.django_db
 def test_login_rejects_invalid_password(user_factory):
     user_factory(username="invalid-login-user", password="StrongPassword123!")
+    cache.clear()
 
     response = APIClient().post(
         "/api/v1/token/",

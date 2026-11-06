@@ -1,14 +1,19 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
 import pytest
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.db import connection, transaction
+from django.db import close_old_connections, connection, transaction
 from django.db.models import Avg, Count, Exists, OuterRef, Subquery
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.test.utils import CaptureQueriesContext
+from rest_framework import serializers
 from rest_framework.test import APIClient
 
 from orders.models import Order, OrderItem
+from orders.serializers import OrderSerializer
 from products.models import Category, Product
 from users.models import User
 
@@ -95,6 +100,40 @@ def test_create_order_rejects_insufficient_stock_atomically(
     assert not Order.objects.filter(user=user).exists()
     product.refresh_from_db()
     assert product.stock == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_orders_cannot_oversell_last_product(user_factory, product_factory):
+    product = product_factory(name="Last product", price="10.00", stock=1)
+    users = [user_factory(username=f"concurrent-user-{index}") for index in range(2)]
+    barrier = Barrier(2)
+
+    def create_order(user_id):
+        close_old_connections()
+        try:
+            user = User.objects.get(pk=user_id)
+            serializer = OrderSerializer(
+                data={
+                    "status": "pending",
+                    "items": [{"product_id": product.id, "quantity": 1}],
+                }
+            )
+            serializer.is_valid(raise_exception=True)
+            barrier.wait(timeout=5)
+            serializer.save(user=user)
+            return True
+        except serializers.ValidationError:
+            return False
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(create_order, [user.id for user in users]))
+
+    assert sorted(results) == [False, True]
+    assert Order.objects.count() == 1
+    product.refresh_from_db()
+    assert product.stock == 0
 
 
 @pytest.mark.django_db
