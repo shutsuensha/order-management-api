@@ -688,7 +688,7 @@ def test_orders_n_plus_one():
         for order in orders:
             order.user.username
 
-    print("QUERIES:", len(queries))
+    assert len(queries) == 1
 
 
 @pytest.mark.django_db
@@ -708,7 +708,7 @@ def test_products_prefetch_related():
         for product in products:
             list(product.categories.all())
 
-    print("QUERIES:", len(queries))
+    assert len(queries) == 2
 
 
 @pytest.mark.django_db
