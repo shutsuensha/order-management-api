@@ -1,5 +1,6 @@
 import pytest
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.db import connection, transaction
 from django.db.models import Avg, Count, Exists, OuterRef, Subquery
 from django.db.models.signals import post_save
@@ -265,6 +266,52 @@ def test_order_status_transition_is_validated():
     assert "status" in response.data["fields"]
     order.refresh_from_db()
     assert order.status == "pending"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("current_status", "target_status"),
+    [
+        ("pending", "paid"),
+        ("pending", "canceled"),
+        ("paid", "processing"),
+        ("paid", "canceled"),
+        ("processing", "completed"),
+        ("processing", "canceled"),
+        ("completed", "completed"),
+        ("canceled", "canceled"),
+    ],
+)
+def test_order_allows_valid_status_transitions(
+    order_factory, current_status, target_status
+):
+    order = order_factory(status=current_status)
+
+    order.transition_to(target_status)
+
+    assert order.status == target_status
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("current_status", "target_status"),
+    [
+        ("pending", "processing"),
+        ("pending", "completed"),
+        ("paid", "pending"),
+        ("paid", "completed"),
+        ("processing", "pending"),
+        ("completed", "canceled"),
+        ("canceled", "pending"),
+    ],
+)
+def test_order_rejects_invalid_status_transitions(
+    order_factory, current_status, target_status
+):
+    order = order_factory(status=current_status)
+
+    with pytest.raises(ValidationError):
+        order.transition_to(target_status)
 
 
 @pytest.mark.django_db
