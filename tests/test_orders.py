@@ -129,6 +129,33 @@ def test_order_detail_forbidden_for_another_user():
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("method", "path", "payload"),
+    [
+        ("get", "/", None),
+        ("patch", "/", {"status": "canceled"}),
+        ("delete", "/", None),
+        ("post", "/cancel/", None),
+    ],
+)
+def test_foreign_order_cannot_be_modified(
+    user_factory, order_factory, authenticated_client, method, path, payload
+):
+    owner = user_factory(username="order-owner")
+    other_user = user_factory(username="other-order-user")
+    order = order_factory(user=owner, number=f"FOREIGN-{method}")
+    client = authenticated_client(other_user)
+
+    request = getattr(client, method)
+    url = f"/api/v1/orders/{order.id}{path}"
+    response = request(url, payload, format="json") if payload else request(url)
+
+    assert response.status_code == 403
+    order.refresh_from_db()
+    assert order.status == Order.Status.PENDING
+
+
+@pytest.mark.django_db
 def test_orders_list_contains_only_current_users_orders():
     user = User.objects.create_user(
         username="user1",
