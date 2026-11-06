@@ -51,6 +51,8 @@ Swagger доступен по адресу <http://127.0.0.1:8000/api/v1/docs/>.
 
 | Метод | URL | Назначение |
 | --- | --- | --- |
+| GET | `/health/live` | проверка, что приложение запущено |
+| GET | `/health/ready` | проверка доступности PostgreSQL и Redis |
 | POST | `/api/v1/token/` | получить access/refresh JWT |
 | POST | `/api/v1/token/refresh/` | обновить access-токен |
 | CRUD | `/api/v1/users/` | пользователи |

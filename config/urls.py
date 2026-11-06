@@ -8,8 +8,11 @@ from rest_framework_simplejwt.views import (
 )
 
 from config.auth_views import ThrottledTokenObtainPairView
+from config.health import live, ready
 
 urlpatterns = [
+    path("health/live", live, name="health-live"),
+    path("health/ready", ready, name="health-ready"),
     path("api/v1/", include("users.urls")),
     path("api/v1/", include("products.urls")),
     path("api/v1/", include("orders.urls")),
