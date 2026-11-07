@@ -4,7 +4,7 @@ from django.db import models
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-    age = models.PositiveIntegerField()
+    age = models.PositiveIntegerField(null=True, blank=True)
 
     def __str__(self) -> str:
         return self.username
