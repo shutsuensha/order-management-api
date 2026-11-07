@@ -13,11 +13,29 @@
 - Swagger-документация;
 - тесты API на pytest и DRF APIClient.
 
+## Архитектура
+
+```text
+Client (Swagger / web / mobile)
+                |
+                v
+API (Django REST Framework + Gunicorn)
+          |                    |
+          v                    v
+   PostgreSQL               Redis
+ (orders/catalog/users)    (cache/throttling)
+```
+
+Основные сущности: `User` и `Profile`, `Category`, `Product`, `Order` и
+`OrderItem`. Товар может относиться к нескольким категориям. Заказ принадлежит
+пользователю и содержит позиции со снимком названия и цены товара на момент
+покупки.
+
 ## Стек
 
 Python 3.14, Django 6, Django REST Framework, PostgreSQL, Redis, Docker Compose, pytest, Ruff.
 
-## Запуск
+## Запуск через Docker
 
 1. Скопировать настройки окружения:
 
@@ -25,27 +43,52 @@ Python 3.14, Django 6, Django REST Framework, PostgreSQL, Redis, Docker Compose,
    cp .env.example .env
    ```
 
-2. Запустить PostgreSQL и Redis:
+2. Запустить API, PostgreSQL и Redis:
 
    ```bash
    make up
    ```
 
-3. Установить зависимости через `uv`, применить миграции и создать администратора:
+3. Применить миграции внутри API-контейнера и создать администратора:
 
    ```bash
-   uv sync
-   uv run python manage.py migrate
-   uv run python manage.py createsuperuser
-   ```
-
-4. Запустить API:
-
-   ```bash
-   make run
+   docker compose exec api python manage.py migrate
+   docker compose exec api python manage.py createsuperuser
+   docker compose exec api python manage.py seed_demo
    ```
 
 Swagger доступен по адресу <http://127.0.0.1:8000/api/v1/docs/>.
+
+## Локальный запуск API
+
+Если API запускается из virtualenv, подними только инфраструктуру:
+
+```bash
+docker compose up -d postgres redis
+uv sync
+uv run python manage.py migrate
+uv run python manage.py createsuperuser
+uv run python manage.py seed_demo
+make run
+```
+
+Для Docker используются внутренние имена сервисов `postgres` и `redis`. Для
+локального запуска в `.env` используются `localhost`, порты `1112` и `3443`.
+
+## Переменные окружения
+
+Шаблон находится в `.env.example`. Обязательные группы настроек:
+
+- `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS` — режим и
+  безопасность Django;
+- `POSTGRES_*` — подключение к PostgreSQL;
+- `REDIS_HOST`, `REDIS_PORT` — подключение к Redis;
+- `EMAIL_*`, `DEFAULT_FROM_EMAIL` — отправка писем;
+- `JWT_ACCESS_TOKEN_MINUTES`, `JWT_REFRESH_TOKEN_DAYS` — сроки JWT;
+- `SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE` — необязательная Sentry-интеграция.
+
+Секреты не добавляются в Git. Для production необходимо использовать длинный
+случайный `DJANGO_SECRET_KEY`, отключить `DEBUG` и настроить SMTP.
 
 ## Основные endpoint'ы
 
@@ -89,6 +132,30 @@ docker compose exec -T postgres pg_dump -U postgres -d drf_db \
 cat backups/<backup-file>.sql \
   | docker compose exec -T postgres psql -U postgres -d drf_db
 ```
+
+## Ключевые технические решения
+
+- `Order.total` вычисляется сервером из `OrderItem`; итоговая сумма от клиента
+  не принимается.
+- Создание заказа и изменение остатков выполняются в `transaction.atomic()`.
+- `select_for_update()` блокирует товар на время списания stock и защищает от
+  конкурентной продажи последнего экземпляра.
+- `product_name` и `unit_price` в `OrderItem` сохраняют исторический snapshot
+  товара, поэтому изменение каталога не меняет старые заказы.
+- JWT используется для аутентификации, а административные операции защищены
+  ролью `is_staff`.
+- Ownership checks ограничивают чтение и изменение заказа его владельцем.
+- Swagger на `/api/v1/docs/` является основной точкой демонстрации API.
+
+## Основной demo-flow
+
+1. Зарегистрировать пользователя через `POST /api/v1/users/`.
+2. Получить JWT через `POST /api/v1/token/`.
+3. Создать категории и товары от имени администратора.
+4. Создать заказ с `items` от имени обычного пользователя.
+5. Проверить рассчитанный `total`, списание stock и просмотр собственного заказа.
+6. Отменить заказ через `POST /api/v1/orders/{id}/cancel/` и проверить возврат
+   остатка.
 
 ## Проверки
 
