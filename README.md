@@ -67,6 +67,29 @@ Swagger доступен по адресу <http://127.0.0.1:8000/api/v1/docs/>.
 Authorization: Bearer <access-token>
 ```
 
+## Healthchecks и резервные копии
+
+`/health/live` проверяет, что процесс API отвечает и может использоваться
+оркестратором для liveness-пробы. `/health/ready` проверяет соединения с
+PostgreSQL и Redis; при недоступности зависимости endpoint возвращает `503`.
+
+Для локального backup PostgreSQL:
+
+```bash
+mkdir -p backups
+docker compose exec -T postgres pg_dump -U postgres -d drf_db \
+  > backups/drf_db_$(date +%Y%m%d_%H%M%S).sql
+```
+
+В production backup следует выполнять по расписанию, хранить вне хоста с базой,
+шифровать и регулярно проверять восстановлением. Пример восстановления локальной
+копии:
+
+```bash
+cat backups/<backup-file>.sql \
+  | docker compose exec -T postgres psql -U postgres -d drf_db
+```
+
 ## Проверки
 
 ```bash
