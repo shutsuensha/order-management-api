@@ -10,6 +10,17 @@ def test_error_response_has_standard_envelope():
     assert response.data["code"] == "authentication_error"
 
 
+def test_responses_include_request_id_header_and_request_log(caplog):
+    caplog.set_level("INFO", logger="config.request")
+    response = APIClient().get("/health/live")
+
+    request_id = response.headers.get("X-Request-ID")
+    assert response.status_code == 200
+    assert request_id is not None
+    assert len(request_id) == 32
+    assert any(request_id in record.getMessage() for record in caplog.records)
+
+
 @pytest.mark.django_db
 def test_order_list_supports_pagination_filter_search_and_ordering(
     user_factory, order_factory, authenticated_client

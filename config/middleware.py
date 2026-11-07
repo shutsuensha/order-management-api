@@ -20,11 +20,12 @@ class RequestTimeMiddleware:
         duration = time.perf_counter() - start
 
         logger.info(
-            "%s %s -> %s in %.4fs",
+            "%s %s -> %s in %.4fs request_id=%s",
             request.method,
             request.path,
             response.status_code,
             duration,
+            request.request_id,
         )
         response["X-Request-ID"] = request.request_id
 
