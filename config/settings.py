@@ -53,8 +53,19 @@ def env_list(name: str, default: str = "") -> list[str]:
 DEBUG = env_bool("DJANGO_DEBUG", False)
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-secret-key-change-me")
 
-if not DEBUG and SECRET_KEY == "dev-only-secret-key-change-me":
-    raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set when DJANGO_DEBUG=False")
+if not DEBUG:
+    insecure_secret_keys = {
+        "change-me",
+        "dev-only-secret-key-change-me",
+    }
+    if (
+        SECRET_KEY in insecure_secret_keys
+        or len(SECRET_KEY) < 50
+        or len(set(SECRET_KEY)) < 5
+    ):
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY must be a long, random value in production"
+        )
 
 ALLOWED_HOSTS = [
     host.strip() for host in env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")

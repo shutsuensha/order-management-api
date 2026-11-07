@@ -49,3 +49,10 @@ class ProductSerializer(serializers.ModelSerializer):
             instance.categories.set(categories)
 
         return instance
+
+
+class ProductPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.URLField(allow_null=True)
+    previous = serializers.URLField(allow_null=True)
+    results = ProductSerializer(many=True)

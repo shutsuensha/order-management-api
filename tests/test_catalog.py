@@ -18,6 +18,8 @@ def test_catalog_read_is_public(product_factory):
 
     assert category_response.status_code == 200
     assert product_response.status_code == 200
+    assert product_response.data["count"] == 1
+    assert len(product_response.data["results"]) == 1
 
 
 @pytest.mark.django_db

@@ -47,7 +47,11 @@ def test_openapi_schema_documents_order_contract():
     schema = response.json()
     order_list = schema["paths"]["/api/v1/orders/"]["get"]
     order_cancel = schema["paths"]["/api/v1/orders/{id}/cancel/"]["post"]
+    product_list = schema["paths"]["/api/v1/products/"]["get"]
     parameter_names = {parameter["name"] for parameter in order_list["parameters"]}
 
     assert {"page", "page_size", "status", "search", "ordering"} <= parameter_names
     assert order_cancel["operationId"] == "orders_cancel"
+    assert product_list["responses"]["200"]["content"]["application/json"]["schema"][
+        "$ref"
+    ].endswith("ProductPage")

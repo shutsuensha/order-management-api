@@ -41,6 +41,7 @@ Python 3.14, Django 6, Django REST Framework, PostgreSQL, Redis, Docker Compose,
 
    ```bash
    cp .env.example .env
+   sed -i "s/^DJANGO_SECRET_KEY=.*/DJANGO_SECRET_KEY=$(openssl rand -hex 32)/" .env
    ```
 
 2. Запустить API, PostgreSQL и Redis:
@@ -59,18 +60,40 @@ Python 3.14, Django 6, Django REST Framework, PostgreSQL, Redis, Docker Compose,
 
 Swagger доступен по адресу <http://127.0.0.1:8000/api/v1/docs/>.
 
+### Demo credentials
+
+После запуска `seed_demo` доступны следующие демонстрационные пользователи:
+
+| Роль | Login | Password |
+| --- | --- | --- |
+| Администратор | `demo-admin` | `AdminDemo123!` |
+| Обычный пользователь | `demo-user` | `UserDemo123!` |
+
+Получить JWT можно через `POST /api/v1/token/`. Эти credentials предназначены
+только для локальной демонстрации. Для других паролей передайте параметры:
+
+```bash
+docker compose exec api python manage.py seed_demo \
+  --admin-password "YourAdminPassword123!" \
+  --user-password "YourUserPassword123!"
+```
+
 ## Локальный запуск API
 
 Если API запускается из virtualenv, подними только инфраструктуру:
 
 ```bash
+cp .env.example .env
+sed -i "s/^DJANGO_SECRET_KEY=.*/DJANGO_SECRET_KEY=$(openssl rand -hex 32)/" .env
 docker compose up -d postgres redis
 uv sync
 uv run python manage.py migrate
-uv run python manage.py createsuperuser
 uv run python manage.py seed_demo
 make run
 ```
+
+`seed_demo` уже создаёт администратора и обычного пользователя, поэтому
+отдельный `createsuperuser` для демонстрации не требуется.
 
 Для Docker используются внутренние имена сервисов `postgres` и `redis`. Для
 локального запуска в `.env` используются `localhost`, порты `1112` и `3443`.
